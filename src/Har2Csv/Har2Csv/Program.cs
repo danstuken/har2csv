@@ -3,25 +3,74 @@
     using System;
     using System.IO;
     using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
 
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            var sampleJson = new StreamReader(new FileStream(@"samples\www.xkcd.com.har", FileMode.Open, FileAccess.Read, FileShare.Read)).ReadToEnd();
-            //var webData = JsonConvert.DeserializeObject<dynamic>(sampleJson);
-            var webData = JObject.Parse(sampleJson);
-            DumpWebData(webData);
+            var config = GetConfiguration(args);
+            var reader = GetInputReader(config);
+            var writer = GetOutputWriter(config);
+            var webData = ReadInputData(reader);
+
+            DumpWebData(webData, writer);
+
+            if(config.IsInputFileSet)
+                reader.Dispose();
+
+            if(config.IsOutputFileSet)
+                writer.Dispose();
         }
 
-        //private static void DumpWebData(dynamic webData)
-        private static void DumpWebData(JObject webData)
+        private static Configuration GetConfiguration(string[] args)
         {
-            foreach (var entry in webData["entries"])
+            var conf = new Configuration();
+            for (int x = 0; x < args.Length; x++)
             {
-                Console.WriteLine("{0}", entry["request"]["method"] );
+                bool consumedOption = false;
+
+                if (args[x] == "-i")
+                {
+                    conf.InputFile = args[x + 1];
+                    consumedOption = true;
+                }
+
+                if (args[x] == "-o")
+                {
+                    conf.OutputFile = args[x + 1];
+                    consumedOption = true;
+                }
+
+                if (consumedOption)
+                    x++;
             }
+            return conf;
+        }
+
+        private static dynamic ReadInputData(TextReader reader)
+        {
+            var json = reader.ReadToEnd();
+            return JsonConvert.DeserializeObject<dynamic>(json);
+        }
+
+        private static TextReader GetInputReader(Configuration config)
+        {
+            if (!config.IsInputFileSet)
+                return Console.In;
+            return new StreamReader(new FileStream(config.InputFile, FileMode.Open, FileAccess.Read, FileShare.Read));
+        }
+
+        private static TextWriter GetOutputWriter(Configuration config)
+        {
+            if (!config.IsOutputFileSet)
+                return Console.Out;
+            return new StreamWriter(new FileStream(config.OutputFile, FileMode.Create, FileAccess.Write, FileShare.None));
+        }
+
+        private static void DumpWebData(dynamic webData, TextWriter writer)
+        {
+            var outputWriter = new OutputWriter(writer);
+            outputWriter.SendWebData(webData);
         }
     }
 }
