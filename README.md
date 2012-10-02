@@ -20,4 +20,4 @@ Usage
 
 ### Read from input stream, write to output stream
 
-`#> gc somefile.har | har2csv
+`#> gc somefile.har | har2csv`
